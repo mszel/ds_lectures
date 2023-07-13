@@ -3,8 +3,8 @@
 __pycache__/
 
 # data and result folders
-# data/
+data/
 
 # files
 pyrightconfig.json
-# secrets.sh
+secrets.sh
