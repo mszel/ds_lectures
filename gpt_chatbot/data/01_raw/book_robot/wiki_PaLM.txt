@@ -1,0 +1,15 @@
+PaLM
+
+PaLM (Pathways Language Model) is a 540 billion parameter transformer-based large language model developed by Google AI.[1] Researchers also trained smaller versions of PaLM, 8 and 62 billion parameter models, to test the effects of model scale.[2]
+
+PaLM is capable of a wide range of tasks, including commonsense reasoning, arithmetic reasoning, joke explanation, code generation, and translation.[2][3][4][5] When combined with chain-of-thought prompting, PaLM achieved significantly better performance on datasets requiring reasoning of multiple steps, such as word problems and logic-based questions.[1][2]
+
+The model was first announced in April 2022 and remained private until March 2023, when Google launched an API for PaLM and several other technologies.[6] The API will first be available to a limited number of developers who join a waitlist before being opened to the public.[7]
+
+Google and DeepMind developed a version of PaLM 540B called Med-PaLM that is fine-tuned on medical data and outperforms previous models on medical question answering benchmarks.[8][9] Med-PaLM was the first to obtain a passing score on U.S. medical licensing questions, and in addition to answering both multiple choice and open-ended questions accurately, it also provides reasoning and is able to evaluate its own responses.[10]
+
+Google also extended PaLM using a vision transformer to create PaLM-E, a state-of-the-art vision-language model that can be used for robotic manipulation.[11][12] The model can perform tasks in robotics competitively without the need for retraining or fine-tuning.[13]
+
+In May 2023, Google announced PaLM 2 at the annual Google I/O keynote.[14] PaLM 2 is reported to be a 340 billion parameter model trained on 3.6 trillion tokens.[15]
+
+In June 2023, Google announced AudioPaLM for speech-to-speech translation, which uses the PaLM-2 architecture and initialization.[16]
