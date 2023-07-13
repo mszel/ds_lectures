@@ -1,2 +1,2 @@
-# dshumphrey
-Codes related to dshumphrey.io 's posts. All projects are located in separate root folders.
+# DS lectures
+Demo projects and codes related to my presentations and training videos.
