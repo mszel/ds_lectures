@@ -1,0 +1,10 @@
+# sys files (usually hidden)
+.DS_Store
+__pycache__/
+
+# data and result folders
+# data/
+
+# files
+pyrightconfig.json
+# secrets.sh
