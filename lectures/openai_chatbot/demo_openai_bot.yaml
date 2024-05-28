@@ -1,0 +1,49 @@
+name: basic_chatbot_demo
+question_llm: 
+  provider: "openai"
+  login:
+    api_key: !path ${OPENAI_API_KEY}
+    base_url: "https://api.openai.com/v1"
+    timeout: 60
+    organization: !path ${OPENAI_API_ORG_CD}
+  modelparams:
+    model: "gpt-3.5-turbo"
+    temperature: 0.1
+    max_tokens: 128
+  version_num: 1
+  maxretry_num: 5
+embedder: 
+  provider: "openai"
+  login:
+    api_key: !path ${OPENAI_API_KEY}
+    base_url: "https://api.openai.com/v1"
+    timeout: 60
+    organization: !path ${OPENAI_API_ORG_CD}
+  modelparams:
+    model: "text-embedding-ada-002"
+  sleeptime: 0.05
+  maxretry: 5
+answer_llm:
+  provider: "openai"
+  login:
+    api_key: !path ${OPENAI_API_KEY}
+    base_url: "https://api.openai.com/v1"
+    timeout: 60
+    organization: !path ${OPENAI_API_ORG_CD}
+  modelparams:
+    model: "gpt-3.5-turbo"
+    temperature: 0.8
+    max_tokens: 1024
+  prompts:
+    system_messages: !chatprompt "GENERAL_RAG_QA_SYSMSG"
+  version_num: 1
+  maxretry_num: 5
+kb_builder:
+  min_split_size: 128
+  max_split_size: 512
+  text_encoding: "latin1"
+  path_raw_folder: !datapath "data/01_raw/book_robot/"
+  path_clean_folder: !datapath "data/02_preprocessed/book_robot/"
+  path_kb: !datapath "data/03_knowledge_base/book_robot/"
+rag_chatbot:
+  context_size: 1500

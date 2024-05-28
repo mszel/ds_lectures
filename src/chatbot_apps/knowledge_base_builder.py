@@ -1,36 +1,26 @@
+"""
+Functions for building up the knowledge base (very basic version).
+"""
+
 ###############################################################################################################
-#     Import Libraries                                                                                        #
-###############################################################################################################
+# Import Libraries
 
 # OS related libraries
+import sys
+from os import path
 import os
 import shutil
-import time
-from os import path
-from time import sleep
-import warnings
-warnings.simplefilter("ignore", UserWarning)
 
-# NLP-related libraries
+# temp solution till packaging is done
+_homepath = sys.path[0].split('/ds_lectures')[0] + '/ds_lectures'
+
+# NLP-related libraries (loading only at the beginning)
 import tiktoken
 TOKENIZER = tiktoken.get_encoding("cl100k_base")
 
-import re
-
-# pdf cleaning
-from PyPDF2 import PdfReader
-
-# openAI API related functions (and login)
-import openai
-
-# running secrets
-with open('./secrets.sh') as f:
-    os.environ.update(
-        line.replace('export ', '', 1).strip().split('=', 1) for line in f
-        if 'export' in line
-)
-
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# own libraries
+from src.utils.file_preproc_utils import handle_text, handle_pdf, pprint
+from src.utils.llm_utils import get_embedding
 
 # basic ETL libraries
 import pandas as pd
@@ -38,119 +28,9 @@ import numpy as np
 from tqdm import tqdm
 tqdm.pandas()
 
-###############################################################################################################
-# util functions
-
-def pprint(s: str) -> None:
-    """ 
-    Pretty print: writing out the time while print the input string.
-    """
-    print('[' + time.strftime('%a %H:%M:%S') + '] ' + s)
-    pass
 
 ###############################################################################################################
-# document preprocessing functions
-
-def _string_cleaner(in_str: str, spec_chars: list=[]) -> str:
-    """
-    Cleaning the string from non-unicode and non alphanumeric characters.
-    Keeping the listed characters from the spec_chars input list.
-    """
-
-    _specdef = ['@', '#', '$', '%', '&', '*', '(', ')', '/', '"', '\'', 
-                '「', '」', '|', '-', ':', ' ', ',', '.', '!', '?', '[', 
-                ']', '{', '}', '<', '>', '=', '+', '~', '`', '^', ';', 
-                '\n', '。', '、', ',', '\t'] + spec_chars
-
-    _goodchars = re.findall("[^\W]", in_str, re.UNICODE)
-    _goodchars = list(set(_specdef + _goodchars))
-
-    return ''.join([_i for _i in in_str if _i in _goodchars])
-
-
-def _rawtext_cleaner(in_str: str, spec_chars: list=[]) -> str:
-    """
-    Removing extra new lines, tabs, white spaces, etc - as well as the
-    non-unicode characters.
-    """
-    
-    _return_txt = ""
-    _raw_text = re.sub(r'\n{2,}', '\n\n', in_str)
-    _raw_text = re.sub(r'[ \t]+', ' ', _raw_text)
-    _raw_text = _raw_text.split('\n\n')
-    _raw_text = [_string_cleaner(_i, spec_chars) for _i in _raw_text]
-    _raw_text = [_i for _i in _raw_text if len(_i.strip()) >= 2]
-    
-    if len(_raw_text) > 0:
-        _return_txt = '\n\n'.join(_raw_text)
-    
-    return _return_txt
-
-
-def _handle_text(path_in_txt: str, _encoding: str, spec_chars: list=[]) -> str:
-    """
-    Handling text files.
-    """
-
-    with open(path_in_txt, encoding=_encoding, errors='ignore') as f:
-        _raw_text = '\n'.join(f.readlines())
-    
-    # do the basic cleaning
-    _raw_text = _rawtext_cleaner(_raw_text, spec_chars)
-    return _raw_text
-
-
-def _handle_pdf(path_in_pdf: str, spec_chars: list=[]) -> str:
-    """
-    Handle pdf files.
-    """
-    _raw_text = ''
-
-    pdffileobj=open(path_in_pdf, 'rb')
-    _allpages = PdfReader(pdffileobj)
-    _totpages = _allpages.numPages
-    for _page in range(_totpages):
-        pagehandle = _allpages.getPage(_page)
-        _raw_text += pagehandle.extractText() + '\n\n'
-    
-    # do the basic cleaning
-    _raw_text = _rawtext_cleaner(_raw_text, spec_chars)
-    return _raw_text
-
-
-###############################################################################################################
-# embedding functions
-
-def _get_embedding(in_text: str, model: str='openai', _sleeptime: float=0.1, maxretry_num: int=5) -> np.array:
-    """
-    Get the embedding of a text using openAI's models.
-    """
-
-    _return_val = np.array([])
-    if len(in_text.replace("\n", " ").strip()) > 0:
-        if model == 'openai':
-            text_m = in_text.replace("\n", " ")
-            _curr_try = 0
-            _solved = False
-
-            # trying to get an answer
-            while ((not _solved) and (_curr_try < maxretry_num)):
-                try:
-                    sleep(_sleeptime) # to avoid openAI error (429-alike)
-                    _return_val = openai.Embedding.create(input=text_m, model='text-embedding-ada-002')['data'][0]['embedding']
-                    _solved = True
-                except Exception as e:
-                    pprint('Error while calling openAI API... Trying in 1 sec...')
-                    print(e)
-                    _curr_try += 1
-        else:
-            raise ValueError('Model not supported.')
-
-    return _return_val
-
-
-###############################################################################################################
-# text splitting functions
+# Helper functions
 
 def _split_text_basic(path_in_txt: str, _encoding: str='latin1', min_token_size: int=128, 
                       max_token_size:int=512) -> pd.DataFrame:
@@ -224,17 +104,18 @@ def _split_text_basic(path_in_txt: str, _encoding: str='latin1', min_token_size:
     return _ret_df
 
 
-
-
 ###############################################################################################################
-#     Main functions                                                                                          #
-###############################################################################################################
+# Main functions 
 
-
-def page_preprocessor(path_in_folder: str, path_out_folder: str, _encoding: str='latin1', _verbose: bool=True) -> None:
+def page_preprocessor(cfg: dict, _verbose: bool=False) -> None:
     """
     Converts the txt and pdf files from a folder to simple, clean text files.
     """
+
+    # get the parameters
+    path_in_folder = cfg['kb_builder']['path_raw_folder']
+    path_out_folder = cfg['kb_builder']['path_clean_folder']
+    _encoding = cfg['kb_builder']['text_encoding']
     
     # create or clear the output folder
     if path.exists(path_out_folder):
@@ -253,7 +134,7 @@ def page_preprocessor(path_in_folder: str, path_out_folder: str, _encoding: str=
             _target = ''.join(_file.split('.txt')[:-1]) + '_cl.txt'
             _target = path.join(path_out_folder, _target)
 
-            _raw_text = _handle_text(_source, _encoding=_encoding)
+            _raw_text = handle_text(_source, _encoding=_encoding)
             with open(_target, 'w', encoding=_encoding) as f:
                 f.write(_raw_text)
         
@@ -261,18 +142,24 @@ def page_preprocessor(path_in_folder: str, path_out_folder: str, _encoding: str=
             _target = ''.join(_file.split('.pdf')[:-1]) + '_conv_pdf.txt'
             _target = path.join(path_out_folder, _target)
 
-            _raw_text = _handle_pdf(_source)
+            _raw_text = handle_pdf(_source)
             with open(_target, 'w', encoding=_encoding) as f:
                 f.write(_raw_text)
     
     pass
     
 
-def knowledge_base_maker(path_in_folder: str, path_out_folder: str, _encoding: str='latin1', min_token_size: int=128, 
-                         max_token_size:int=512, model: str='openai', _sleeptime: float=0.1, _verbose: bool=True) -> None:
+def knowledge_base_maker(cfg: dict, _verbose: bool=True) -> None:
     """
     Creates a knowledge base from the cleaned text files.
     """
+
+    # get the parameters
+    path_in_folder = cfg['kb_builder']['path_clean_folder']
+    path_out_folder = cfg['kb_builder']['path_kb']
+    _encoding = cfg['kb_builder']['text_encoding']
+    min_token_size = cfg['kb_builder']['min_split_size']
+    max_token_size = cfg['kb_builder']['max_split_size']
 
     # if the old file exists, read the old file, if the out folder does not exist, create it
     if path.exists(path.join(path_out_folder, 'knowledge_base.pickle')):
@@ -307,7 +194,7 @@ def knowledge_base_maker(path_in_folder: str, path_out_folder: str, _encoding: s
         _new_df_o = pd.merge(_new_df_o, _helper_old, how='inner', on=['split_text'])
 
         # if not, calling open AI API
-        _new_df_n['node_embedding'] = _new_df_n.split_text.progress_apply(lambda x: _get_embedding(x, model=model, _sleeptime=_sleeptime))
+        _new_df_n['node_embedding'] = _new_df_n.split_text.progress_apply(lambda x: get_embedding(x, cfg))
 
         # concatenating the new and old data frames
         _new_df = pd.concat([_new_df_o, _new_df_n], axis=0).reset_index(drop=True)
