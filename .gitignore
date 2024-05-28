@@ -127,3 +127,12 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# data files (not the example input)
+data/02_preprocessed
+data/03_knowledge_base
+data/01_raw/*
+
+!data/01_raw/book_robot/
+
+.DS_Store
