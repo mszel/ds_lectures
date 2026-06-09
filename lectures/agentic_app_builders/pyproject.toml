@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agentic-app-builders"
+version = "0.0.1"
+description = "Lesson demos for comparing agentic-AI frameworks and understanding how agentic apps work."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "openai",
+  "anthropic",
+  "python-dotenv",
+  "pypdf",
+  "beautifulsoup4",
+  "lxml",
+  "tiktoken",
+  "httpx",
+  "pydantic-ai-slim[openai]",
+  "langgraph",
+  "langchain-openai",
+  "langchain-mcp-adapters",
+  "openai-agents",
+  "google-adk",
+  "litellm>=1.83.7,<=1.83.14",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pre-commit",
+  "ruff",
+  "jupyter",
+  "ipykernel",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src", "src.*"]
+exclude = ["data", "data.*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+force-exclude = true
+extend-include = ["*.ipynb"]
+extend-exclude = ["data", ".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
